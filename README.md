@@ -13,7 +13,7 @@ scipy 1.6.2
 math 
 
 ### Before you begin:
-Make sure all mentioned packages are installed. Run the first code chunk to load all packages mentioned.
+Make sure all mentioned packages are installed. Run the first code chunk to load all packages mentioned. There are also two markdown files included. One is BIOE234_final, which is a fully functional markdown that includes all objectives we successfully have running so far. The second is BIOE234_final_work_in_progress, which has objectives that were/are being acively worked on and includes detailed explanations on what the objective is and how we are trying to ahcieve it. The work in progress objectives currently do not work. 
 
 ## Utilizing the script
 The simulations are run using a single markdown file. The markdown file is segmented into multiple different sections, with each section achieving a different goal. The sections, called objectives, are listed below.
