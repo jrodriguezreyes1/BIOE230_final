@@ -18,10 +18,10 @@ Make sure all mentioned packages are installed. Run the first code chunk to load
 The simulations are run using a single markdown file. The markdown file is segmented into multiple different sections, with each section achieving a different goal. 
 
 ### Objective 1: Model random walkers trajectories that move in response to a single chemoattractant
-Add explanation here
-
+No input needed
+Running file will produce 10 random walkers that are drawn to an attractive force.
 ### Objective 2: Model random walkers trajectories that move in response to chemoattractants scattered along a straight line
-Add explanation here
-
+No input needed
+Running file will produce 10 random walkers that are drawn to an uniformly upwards attractive force.
 ### Objective 3: Build random walkers simultaneously to later enable attraction and repulsion towards other walkers as they move
-Add explanation here
+Will be updated
