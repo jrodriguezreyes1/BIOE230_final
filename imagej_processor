@@ -1,0 +1,21 @@
+run("8-bit");
+setAutoThreshold("Default");
+//run("Threshold...");
+//setThreshold(0, 128);
+setOption("BlackBackground", false);
+run("Convert to Mask");
+run("Close");
+
+run("Despeckle");
+saveAs("Tiff", "C:/Users/Justin Couvrette/Downloads/BIOE230/img/growth01.tif");
+run("Close");
+run("Analyze Particles...", "display exclude summarize");
+setAutoThreshold("Default");
+//run("Threshold...");
+//setThreshold(135, 255);
+setOption("BlackBackground", false);
+run("Convert to Mask");
+run("Close");
+
+run("Invert");
+run("Analyze Particles...", "display exclude summarize");
