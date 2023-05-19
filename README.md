@@ -2,7 +2,7 @@
 This GitHub repository contains the scripts necessary to simulate slime mold moving in response to food by using an Active Brownian Particle model to simulate their search and introducing a chemoattractant force.
 
 ## Contributors
-Jesse Rodriguez Reyes, Justin Couvrette, Salmanali Mohammad
+Jesse Rodriguez Reyes, Justin Couvrette, Salmanali Mohammad, Tyler Couvrette
 
 ## Getting Started
 The following packages were used when running the code:
