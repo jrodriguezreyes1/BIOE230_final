@@ -6,13 +6,11 @@ class Thing():
 		self.thing2 = self.thing1
 	def change_thing2(self):
 		self.thing2 = [self.thing2[0] + 2]
+	def self_test(self, onj):
+		return self == onj
 
 
-list_thing = [Thing() for i in range(2)]
-
-for i in range(2):
-	for this in list_thing:
-		this.change_thing2()
-		print(this.__dict__)
+this1 = Thing()
+print(this1.self_test(this1))
 
 
