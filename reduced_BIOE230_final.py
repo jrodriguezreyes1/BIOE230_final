@@ -4,32 +4,37 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 # ABP model parameters: ballistic velocity, time step, translational diffusion constant
-velocity_magnitude = 15
-dt = 1
-rotational_diffusion = 0.05                  
-translational_diffusion = 5                 
-#vel =5.0; dt = 1; Drot = 0.1; Dtrans = 0.1; #original parameters that work well in case the new ones get screwed up
+                
 
 #Initialize scaling stuff (how long the sim will take)
-max_steps = 6000           #will remove by having termination functionality
 num_walkers = 5
-x_scaling = 2000            #width of area walkers could be on
+x_scaling = 2000            #wiself.dth of area walkers could be on
 
 #Nutrient info. Pretty sure you can change the "center" value
 nutrient_level = 1500       # point where nutrient is located
-nutrient_exponent = 1.5       # Concentration is 10^exponent (force strength)
-start_exponent = 0.75        # Concentration is 10^exponent (force strength)
-# nutrient_exponent, start_exponent = 5, 3 # Concentration is 10^exponent (force strength with -6)
+# self.nutrient_exponent, self.start_exponent = 5, 3 # Concentration is 10^exponent (force strength with -6)
 
-branch_probability = 0.001
 
-convergence_divergence_magnitude = 25
-convergence_divergence_distance = 100
 
 '''
 steps move to walker so new walkers start at step 0
+    what can be added to walker:
+        max_steps
+        magnitudes
+        self.dt
+        diffusionsexponents
+        self.branch_probability
+        con/div stuff
 
 add break command that plots whatever is currently computed
+
+update print outs to say how far along we are
+
+run time, maybe a log saying what the variables were as well
+
+save plots to folder
+
+make variables seem like they mean something
 
 convergence_divergence
     wait longer to converge?
@@ -40,6 +45,27 @@ convergence_divergence
 
 class Walker():
     def __init__(self, starting_position = None):
+        '''
+        define constants and initialized internal variables
+        '''
+        #define constants
+        #max steps and step size
+        self.max_steps = 3000
+        self.dt = 1
+
+        #magnitudes
+        self.momentum_magnitude = 15                  
+        self.random_magnitude = 5
+        self.convergence_divergence_magnitude = 25
+
+        #behavioral constants
+        self.rotational_diffusion = 0.05
+        self.nutrient_exponent = 1.5       # Concentration is 10^exponent (force strength)
+        self.start_exponent = 1        # Concentration is 10^exponent (force strength)
+        self.branch_probability = 0.0005
+        self.convergence_divergence_distance = 100
+
+        #initialize variables
         if starting_position == None:
             self.starting_position = [x_scaling*random(), 0]
         else:
@@ -51,8 +77,9 @@ class Walker():
         self.branched = False
         self.convergence_divergence_vector = [0, 0]
         self.terminated = False
+        self.step = 0
 
-    def walk(self):
+    def walk(self, walkers):
         '''
         executes one step of walk and updates position
         '''
@@ -62,12 +89,20 @@ class Walker():
         random_vector = self.random_force()
         total_vector = [force_vector[0] + random_vector[0] + self.convergence_divergence_vector[0], force_vector[1] + random_vector[1] + self.convergence_divergence_vector[1]]
         total_vector_length = math.sqrt(total_vector[0]**2 + total_vector[1]**2)
-        total_vector = [dt*total_vector[0]/total_vector_length, dt*total_vector[1]/total_vector_length]
+        total_vector = [self.dt*total_vector[0]/total_vector_length, self.dt*total_vector[1]/total_vector_length]
         self.current_position = [self.current_position[0] + total_vector[0], self.current_position[1] + total_vector[1]]
         self.positions.append(self.current_position)
 
         self.finish()
+        if self.finished:
+            return
         self.convergence_divergence_vector = [0, 0]
+        for comparison_walker in walkers:
+            self.check_terminate_and_update_convergence_divergence_force(comparison_walker)
+            if self.terminated:
+                break
+
+        self.step += 1
 
     def gradient_force(self):
         '''
@@ -75,7 +110,7 @@ class Walker():
         '''        
         distance_to_nutrient = abs(self.current_position[1] - nutrient_level)
         noramlized_distance_to_nutrient = 1 - (distance_to_nutrient/nutrient_level)
-        exponent = (noramlized_distance_to_nutrient * (nutrient_exponent - start_exponent)) + start_exponent
+        exponent = (noramlized_distance_to_nutrient * (self.nutrient_exponent - self.start_exponent)) + self.start_exponent
         y_force = 10 ** exponent
 
         return [0, y_force]
@@ -85,26 +120,69 @@ class Walker():
         Calculates contrbution of randomness on movement
         '''
         #calculate translational randomness
-        dx = translational_diffusion * 2 *(random() - 0.5)
-        dy = translational_diffusion * 2 *(random() - 0.5)
+        dx = self.random_magnitude * 2 *(random() - 0.5)
+        dy = self.random_magnitude * 2 *(random() - 0.5)
 
         #calculate new velocity
-        velocity = [velocity_magnitude*math.cos(self.velocity_direction), velocity_magnitude*math.sin(self.velocity_direction)]
+        velocity = [self.momentum_magnitude*math.cos(self.velocity_direction), self.momentum_magnitude*math.sin(self.velocity_direction)]
 
         #update valocity direction with some randomness
-        self.velocity_direction += rotational_diffusion * (2*math.pi*(random()-0.5))
+        self.velocity_direction += self.rotational_diffusion * (2*math.pi*(random()-0.5))
 
         return [velocity[0] + dx, velocity[1] + dy]
 
-    def check_terminate_and_update_convergence_divergence_force(self, step, comparison_walker):
+    def check_collision(self, previous_comparison_position, comparison_position):
         '''
-        loops through other walkers and avoids them for a bit and then goes towards them as time goes on
+        checks to see if there is a collision between two segments
         '''
-        normalized_time = (step/max_steps) - 0.5
-        previous_comparison_position = comparison_walker.starting_position
+        '''
+        next_segment_flag_1 = False
+        do_break = False
         previous_position = self.positions[-2]
         lower_y = round(min(previous_position[1], self.current_position[1]), 5)
         upper_y = round(max(previous_position[1], self.current_position[1]), 5)
+        lower_comparison_y = round(min(previous_comparison_position[1], comparison_position[1]), 5)
+        upper_comparison_y = round(max(previous_comparison_position[1], comparison_position[1]), 5)
+
+        if (lower_y < round(comparison_position[1], 5) < upper_y):
+            next_segment_flag_1 = True
+            #run check on previous segement
+            y_solution = self.get_interception(comparison_position, previous_comparison_position)
+            if (max(lower_y, lower_comparison_y) < y_solution < min(upper_y, upper_comparison_y)):
+                self.terminated = True
+                do_break = True
+        elif next_segment_flag:
+            #run check on previous segement
+            y_solution = self.get_interception(comparison_position, previous_comparison_position)
+            if (max(lower_y, lower_comparison_y) < y_solution < min(upper_y, upper_comparison_y)):
+                self.terminated = True
+                do_break = True
+        elif lower_comparison_y < lower_y and upper_comparison_y > upper_y:
+            #run check
+            y_solution = self.get_interception(comparison_position, previous_comparison_position)
+            if (lower_y < y_solution < upper_y):
+                self.terminated = True
+                do_break = True
+
+        return next_segment_flag_1, do_break
+        '''
+        do_break = False
+        y_solution = self.get_interception(comparison_position, previous_comparison_position)
+        lower_y = round(max(min(self.positions[-2][1], self.current_position[1]), min(previous_comparison_position[1], comparison_position[1])), 5)
+        upper_y = round(min(max(self.positions[-2][1], self.current_position[1]), max(previous_comparison_position[1], comparison_position[1])), 5)
+        if lower_y < y_solution < upper_y:
+            self.terminated = True
+            do_break = True
+
+        return do_break
+
+
+    def check_terminate_and_update_convergence_divergence_force(self, comparison_walker):
+        '''
+        loops through other walkers and avoids them for a bit and then goes towards them as time goes on
+        '''
+        normalized_time = (self.step/self.max_steps) - 0.5
+        previous_comparison_position = comparison_walker.starting_position
         next_segment_flag = False
 
         skip_first = True
@@ -122,33 +200,15 @@ class Walker():
                 self.terminated = True
                 break
 
-            lower_comparison_y = round(min(previous_comparison_position[1], comparison_position[1]), 5)
-            upper_comparison_y = round(max(previous_comparison_position[1], comparison_position[1]), 5)
-            if (lower_y < round(comparison_position[1], 5) < upper_y):
-                next_segment_flag = True
-                #run check on previous segement
-                y_solution = self.get_interception(comparison_position, previous_comparison_position)
-                if (max(lower_y, lower_comparison_y) < y_solution < min(upper_y, upper_comparison_y)):
-                    self.terminated = True
-                    break
-            elif next_segment_flag:
-                next_segment_flag = False
-                #run check on previous segement
-                y_solution = self.get_interception(comparison_position, previous_comparison_position)
-                if (max(lower_y, lower_comparison_y) < y_solution < min(upper_y, upper_comparison_y)):
-                    self.terminated = True
-                    break
-            elif lower_comparison_y < lower_y and upper_comparison_y > upper_y:
-                #run check
-                y_solution = self.get_interception(comparison_position, previous_comparison_position)
-                if (lower_y < y_solution < upper_y):
-                    self.terminated = True
+            if distance_to_position < self.dt*2:
+                do_break = self.check_collision(previous_comparison_position, comparison_position)
+                if do_break:
                     break
 
             previous_comparison_position = comparison_position
 
-            if distance_to_position < convergence_divergence_distance:
-                normalized_vector_magnitude = convergence_divergence_magnitude * normalized_time / distance_to_position**2
+            if distance_to_position < self.convergence_divergence_distance:
+                normalized_vector_magnitude = self.convergence_divergence_magnitude * normalized_time / distance_to_position**2
                 self.convergence_divergence_vector[0] += normalized_vector_magnitude * (comparison_position[0]-self.current_position[0])
                 self.convergence_divergence_vector[1] += normalized_vector_magnitude * (comparison_position[1]-self.current_position[1])
 
@@ -166,20 +226,21 @@ class Walker():
         '''
         Used to determine if the walker is finished
         '''
-        if self.current_position[1] > nutrient_level:
+        if self.current_position[1] > nutrient_level or self.step > self.max_steps:
             self.finished = True
 
     def branch(self):
         '''
         Used to determine if the walker should branch and executes the branch
         '''
-        if random() < branch_probability:
+        if random() < self.branch_probability:
             return True
         return False
 
 def ABP_step_biased_linear(plot = True):
     '''
     Runs walker simulation and plots results
+    '''
     '''
     #generate initial list of walkers
     walkers = [Walker() for i in range(num_walkers)]
@@ -189,7 +250,7 @@ def ABP_step_biased_linear(plot = True):
     steps = 0
     while len(walkers) > 0 and steps < max_steps:
         for walker in walkers:
-            walker.walk()
+            walker.walk(walkers+finished_walkers)
             if walker.finished:
                 walkers.remove(walker)
                 finished_walkers.append(walker)
@@ -208,6 +269,22 @@ def ABP_step_biased_linear(plot = True):
                 walkers.append(Walker(walker.current_position))
         steps += 1
     print(steps)
+    '''
+    walkers = [Walker() for i in range(num_walkers)]
+    finished_walkers = []
+
+    while len(walkers) > 0:
+        for walker in walkers:
+            walker.walk(walkers+finished_walkers)
+            if walker.finished or walker.terminated:
+                walkers.remove(walker)
+                finished_walkers.append(walker)
+                continue
+            if walker.branch():
+                walkers.append(Walker(walker.current_position))
+
+
+
 
     if plot:
         fig, ax = plt.subplots(1, 1, figsize = (10, 10))
@@ -239,7 +316,7 @@ def ABP_step_biased_linear(plot = True):
         for i in range(m):
             distance_to_nutrient = abs(i - 1000 - nutrient_level)
             noramlized_distance_to_nutrient = 1 - (distance_to_nutrient/nutrient_level)
-            exponent = (noramlized_distance_to_nutrient * (nutrient_exponent - start_exponent)) + start_exponent
+            exponent = noramlized_distance_to_nutrient * 2 #(noramlized_distance_to_nutrient * (self.nutrient_exponent - self.start_exponent)) + self.start_exponent
             conc_matrix[i] = [exponent + 6]*m
         ax.imshow(conc_matrix, cmap=cmap_color, interpolation='nearest', extent = [-1000, 3000, -1000, 3000], origin = 'lower')
 
