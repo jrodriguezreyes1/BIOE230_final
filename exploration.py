@@ -82,7 +82,7 @@ class Walker():
 
         #Check if walker reached the nutrient or max_steps
         self.finish()
-        if self.finished:
+        if self.finished or self.terminated:
             return
 
         #check if the walker ran into another walker. Terminate if it did
@@ -141,6 +141,7 @@ class Walker():
             lower_y = round(max(min(self.positions[-2][1], self.current_position[1]), min(previous_comparison_position[1], comparison_position[1])), 5)
             upper_y = round(min(max(self.positions[-2][1], self.current_position[1]), max(previous_comparison_position[1], comparison_position[1])), 5)
             if lower_y < y_solution < upper_y:
+                self.positions[-1] = comparison_position
                 self.terminated = True
                 do_break = True
 
@@ -205,8 +206,10 @@ class Walker():
         '''
         Used to determine if the walker is finished
         '''
-        if self.current_position[1] > nutrient_level or self.step > self.max_steps:
+        if self.current_position[1] > nutrient_level:
             self.finished = True
+        if self.step > self.max_steps:
+            self.terminated = True
 
     def branch(self):
         '''
@@ -216,7 +219,7 @@ class Walker():
             return True
         return False
 
-def ABP_step_biased_linear(plot = True, save = False):
+def exploitation_algorithm():
     '''
     Runs walker simulation and plots results
     '''
@@ -255,64 +258,6 @@ def ABP_step_biased_linear(plot = True, save = False):
 
     end_time = time.time()
     print(f'Simulation time: {round(end_time - start_time, 0)} seconds')
-    
-    now = datetime.now()                #get date for saves and logs
-    #save results
-    if save:
-        #make new directory
-        os.mkdir(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}')
-
-        #generate and save walker data
-        with open(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\raw_data.csv', 'a') as walker_file:
-            walker_file.write('walker_id,position_id,x,y\n')
-            walker_id = 0
-            all_walkers = walkers + finished_walkers
-            for walker in all_walkers:
-                position_id = 0
-                for position in walker.positions:
-                    walker_file.write(f'{walker_id},{position_id},{position[0]},{position[1]}\n')
-                    position_id += 1
-                walker_id += 1
-    
-    #plot results
-    if plot:
-        fig, ax = plt.subplots(1, 1, figsize = (10, 10))
-        all_walkers = walkers + finished_walkers
-        for walker in all_walkers:
-            x = []
-            y = []
-            for position in walker.positions:
-                x.append(position[0])
-                y.append(position[1])
-            plt.plot(x, y, '-')
-            plt.plot(x[-1], y[-1], 'ro', markersize = 4)
-            plt.plot(x[0], y[0], 'bo', markersize = 4)
-        ax.set_title("Biased walk with chemoattractant".format(), x = 0.5, y = 0.87)
-        ax.set_xlim(-3000, 5000)
-        ax.set_ylim(-3000, 3000)
-        ax.set_xlabel("poisiton in μm")
-        ax.set_ylabel("poisiton in μm")
-
-        #First set color map
-        mycolor = [[256, 256, 256], [256, 255, 254], [256, 253, 250], [256, 250, 240], [255, 236, 209], [255, 218, 185], [251, 196, 171], [248, 173, 157], [244, 151, 142], [240, 128, 128]] #from coolors：）
-        for i in mycolor:
-            for j in range(len(i)):
-                i[j] *= (1/256)
-        cmap_color = colors.LinearSegmentedColormap.from_list('my_list', mycolor)
-        m = 8000
-        conc_matrix = [0]*m    #np.zeros((m, m))
-        for i in range(m):
-            distance_to_nutrient = abs(i - 3000 - nutrient_level)
-            noramlized_distance_to_nutrient = 1 - (distance_to_nutrient/nutrient_level)
-            exponent = noramlized_distance_to_nutrient * 2 #(noramlized_distance_to_nutrient * (self.nutrient_exponent - self.start_exponent)) + self.start_exponent
-            conc_matrix[i] = [exponent + 6]*m
-        ax.imshow(conc_matrix, cmap=cmap_color, interpolation='nearest', extent = [-3000, 5000, -3000, 5000], origin = 'lower')
-
-        #save plot
-        if save:
-            plt.savefig(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\plot.png')
-
-        plt.show()
 
     #log results
     with open('log.csv', 'a') as log_file:
@@ -323,6 +268,7 @@ def ABP_step_biased_linear(plot = True, save = False):
         nutrient exponent,start exponent,rotational diffusion,branch probability,
         convergence/divergence distance,loop count,simulation time
         '''
+        now = datetime.now()                #get date for saves and logs
         log_file.write(f'{now.strftime("%m/%d/%Y")},{now.strftime("%H:%M:%S")},')    #enter date and time
         log_file.write(f'{num_walkers},')
         log_file.write(f'{nutrient_level},')
@@ -348,8 +294,75 @@ def ABP_step_biased_linear(plot = True, save = False):
         log_file.write(f'{input("Enter a note for the log file: ")}\n')
 
 
+    return walkers + finished_walkers
+
+
+
+
+
+
+
+def save_data(all_walkers, plot=None):
+    now = datetime.now()                #get date for saves and logs
+    #save results
+    #make new directory
+    os.mkdir(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}')
+
+    if plot != None:
+        #save plot
+        plot.savefig(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\plot.png')
+
+    #generate and save walker data
+    with open(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\raw_data.csv', 'a') as walker_file:
+        walker_file.write('walker_id,position_id,x,y\n')
+        walker_id = 0
+        for walker in all_walkers:
+            position_id = 0
+            for position in walker.positions:
+                walker_file.write(f'{walker_id},{position_id},{position[0]},{position[1]}\n')
+                position_id += 1
+            walker_id += 1
+    
+def plot_data(all_walkers):
+    #plot results
+    fig, ax = plt.subplots(1, 1, figsize = (10, 10))
+    for walker in all_walkers:
+        x = []
+        y = []
+        for position in walker.positions:
+            x.append(position[0])
+            y.append(position[1])
+        plt.plot(x, y, '-')
+        plt.plot(x[-1], y[-1], 'ro', markersize = 4)
+        plt.plot(x[0], y[0], 'bo', markersize = 4)
+    ax.set_title("Biased walk with chemoattractant".format(), x = 0.5, y = 0.87)
+    ax.set_xlim(-3000, 5000)
+    ax.set_ylim(-3000, 3000)
+    ax.set_xlabel("poisiton in μm")
+    ax.set_ylabel("poisiton in μm")
+
+    #First set color map
+    mycolor = [[256, 256, 256], [256, 255, 254], [256, 253, 250], [256, 250, 240], [255, 236, 209], [255, 218, 185], [251, 196, 171], [248, 173, 157], [244, 151, 142], [240, 128, 128]] #from coolors：）
+    for i in mycolor:
+        for j in range(len(i)):
+            i[j] *= (1/256)
+    cmap_color = colors.LinearSegmentedColormap.from_list('my_list', mycolor)
+    m = 8000
+    conc_matrix = [0]*m    #np.zeros((m, m))
+    for i in range(m):
+        distance_to_nutrient = abs(i - 3000 - nutrient_level)
+        noramlized_distance_to_nutrient = 1 - (distance_to_nutrient/nutrient_level)
+        exponent = noramlized_distance_to_nutrient * 2 #(noramlized_distance_to_nutrient * (self.nutrient_exponent - self.start_exponent)) + self.start_exponent
+        conc_matrix[i] = [exponent + 6]*m
+    ax.imshow(conc_matrix, cmap=cmap_color, interpolation='nearest', extent = [-3000, 5000, -3000, 5000], origin = 'lower')
+
+    return plt
+
+    
 if __name__ == '__main__':
     '''
     run code if you run this script instead of importing it
     '''
-    ABP_step_biased_linear(True, True)
+    all_walkers = exploitation_algorithm()
+    save_data(all_walkers)
+    plot_data(all_walkers)
