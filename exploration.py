@@ -7,34 +7,29 @@ import time
 from datetime import datetime
 import os
 
-# Simulation Constants (Walker settings in Walker.__init__ function)
-num_walkers = 5             # Number of Walkers
-x_scaling = 2000            # width of area walkers could be on
-nutrient_level = 1500       # point where nutrient is located
-max_loops = 10000           # stop the simulation from running away
-
 
 class Walker():
-    def __init__(self, starting_position = None):
+    def __init__(self, starting_position = None, x_scaling = 1, nutrient_level = 1):
         '''
         define constants and initialized internal variables
         '''
         #define constants
-        #max steps and step size
+        #max steps, step size, and nutrient level
         self.max_steps = 3000                                       #maximum steps each walker can take
         self.dt = 1                                                 #step size
+        self.nutrient_level = nutrient_level                        #nutrient level
 
         #magnitudes
         self.momentum_magnitude = 15                                #relative magnitude of the momemtum vector
         self.random_magnitude = 5                                   #relative magnitude of the random vector
-        self.convergence_divergence_magnitude = 25                  #relative magnitude of the convergence/diveregence vector
-        self.nutrient_exponent = 1.5                                #force vector magnitude is 10^[nutrient_exponent] at the nutrient
+        self.convergence_divergence_magnitude = 45                  #relative magnitude of the convergence/diveregence vector
+        self.nutrient_exponent = 1.4                                #force vector magnitude is 10^[nutrient_exponent] at the nutrient
         self.start_exponent = 1                                     #force vector magnitude is 10^[start_exponent] at the start
                                                                     #force vetor expoenet changes linearly as the walker approaches the nutrient
         #behavioral constants
         self.rotational_diffusion = 0.05                            #how much the momentum can change per step
-        self.branch_probability = 0.0005                            #probability that a walker with branch
-        self.convergence_divergence_distance = 100                  #radius the walker will look to determine the convergence/divergence force
+        self.branch_probability = 0.0015                            #probability that a walker with branch
+        self.convergence_divergence_distance = 50                   #radius the walker will look to determine the convergence/divergence force
 
         #initialize variables (Don't Touch!)
         if starting_position == None:
@@ -100,8 +95,8 @@ class Walker():
         '''
         Calculates contribution of contribution gradient on movement
         '''        
-        distance_to_nutrient = abs(self.current_position[1] - nutrient_level)
-        noramlized_distance_to_nutrient = 1 - (distance_to_nutrient/nutrient_level)
+        distance_to_nutrient = abs(self.current_position[1] - self.nutrient_level)
+        noramlized_distance_to_nutrient = 1 - (distance_to_nutrient/self.nutrient_level)
         exponent = (noramlized_distance_to_nutrient * (self.nutrient_exponent - self.start_exponent)) + self.start_exponent
         y_force = 10 ** exponent
 
@@ -206,7 +201,7 @@ class Walker():
         '''
         Used to determine if the walker is finished
         '''
-        if self.current_position[1] > nutrient_level:
+        if self.current_position[1] > self.nutrient_level:
             self.finished = True
         if self.step > self.max_steps:
             self.terminated = True
@@ -219,7 +214,9 @@ class Walker():
             return True
         return False
 
-def exploitation_algorithm():
+
+
+def exploration_algorithm(num_walkers, x_scaling, nutrient_level, max_loops):
     '''
     Runs walker simulation and plots results
     '''
@@ -229,7 +226,7 @@ def exploitation_algorithm():
     start_time = time.time()                                        #start run timer
 
     #Initialize walker lists
-    walkers = [Walker() for i in range(num_walkers)]
+    walkers = [Walker(x_scaling = x_scaling, nutrient_level = nutrient_level) for i in range(num_walkers)]
     finished_walkers = []
 
     loop_count = 0
@@ -260,13 +257,13 @@ def exploitation_algorithm():
     print(f'Simulation time: {round(end_time - start_time, 0)} seconds')
 
     #log results
-    with open('log.csv', 'a') as log_file:
+    with open('exploration_log.csv', 'a') as log_file:
         '''
         save simulation parameters to log
         date,time,number of walkers,nutrient level,number of total walkers,number of finished walkers,
         max_steps,dt,momentum magnitude,random magnitude,convergence/divergence magnitude,
         nutrient exponent,start exponent,rotational diffusion,branch probability,
-        convergence/divergence distance,loop count,simulation time
+        convergence/divergence distance,loop count,simulation time,note
         '''
         now = datetime.now()                #get date for saves and logs
         log_file.write(f'{now.strftime("%m/%d/%Y")},{now.strftime("%H:%M:%S")},')    #enter date and time
@@ -294,7 +291,7 @@ def exploitation_algorithm():
         log_file.write(f'{input("Enter a note for the log file: ")}\n')
 
 
-    return walkers + finished_walkers
+    return walkers + finished_walkers, now
 
 
 
@@ -302,11 +299,11 @@ def exploitation_algorithm():
 
 
 
-def save_data(all_walkers, plot=None):
+def save_data(all_walkers, now, plot=None):
     now = datetime.now()                #get date for saves and logs
     #save results
     #make new directory
-    os.mkdir(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}')
+    os.mkdir(f'exploration_raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}')
 
     if plot != None:
         #save plot
@@ -322,8 +319,10 @@ def save_data(all_walkers, plot=None):
                 walker_file.write(f'{walker_id},{position_id},{position[0]},{position[1]}\n')
                 position_id += 1
             walker_id += 1
+
+    return f'{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}'
     
-def plot_data(all_walkers):
+def plot_data(all_walkers, nutrient_level):
     #plot results
     fig, ax = plt.subplots(1, 1, figsize = (10, 10))
     for walker in all_walkers:
@@ -363,6 +362,12 @@ if __name__ == '__main__':
     '''
     run code if you run this script instead of importing it
     '''
-    all_walkers = exploitation_algorithm()
-    save_data(all_walkers)
-    plot_data(all_walkers)
+    # Simulation Constants (Walker settings in Walker.__init__ function)
+    num_walkers = 30            # Number of Walkers
+    x_scaling = 2000            # width of area walkers could be on
+    nutrient_level = 1500       # point where nutrient is located
+    max_loops = 10000           # stop the simulation from running away
+
+    all_walkers, now = exploration_algorithm(num_walkers, x_scaling, nutrient_level, max_loops)
+    plot = plot_data(all_walkers, nutrient_level)
+    save_data(all_walkers, now, plot)

@@ -11,7 +11,7 @@ def load_exploration(raw_data_csv):
 	date_time = raw_data_csv.split('\\')[-2]
 	date = date_time.split('_')[0] + '/' + date_time.split('_')[1] + '/' + date_time.split('_')[2]
 	time = date_time.split('_')[3].split('-')[0] + ':' + date_time.split('_')[3].split('-')[1]
-	with open('log.csv', 'r') as log_file:
+	with open('exploration_log.csv', 'r') as log_file:
 		for line in log_file.readlines():
 			list_line = line.strip().split(',')
 			if (list_line[0] == date) and (time in list_line[1]):
@@ -52,3 +52,19 @@ def load_exploration(raw_data_csv):
 	return all_walkers
 
 
+def print_matrix(matrix):
+	for line in matrix:
+		to_print = '['
+		for el in line:
+			element = str(el)
+			element = element[:5]
+			to_print += f'{element}{" "*(6-len(element))}'
+		print(to_print+']')
+
+def print_vector(vector):
+	to_print = '['
+	for el in vector:
+		element = str(el)
+		element = element[:5]
+		to_print += f'{element}{" "*(6-len(element))}'
+	print(to_print+']')
