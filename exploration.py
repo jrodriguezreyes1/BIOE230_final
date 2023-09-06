@@ -151,6 +151,7 @@ class Walker():
         '''
         previous_comparison_position = comparison_walker.starting_position      #initialize
         normalized_time = ((self.step/self.max_steps) - 0.5)**3                 #used to determine convergence v. divergence and part of the magnitude of the force (cubic function)
+        # normalized_time = -0.1              #constant always diverging
 
         skip_first = True
         for comparison_position in comparison_walker.positions:
@@ -240,7 +241,7 @@ def exploration_algorithm(num_walkers, x_scaling, nutrient_level, max_loops):
                 finished_walkers.append(walker)
                 continue
             if walker.branch():                                     #create new walker if branched
-                walkers.append(Walker(walker.current_position))
+                walkers.append(Walker(starting_position = walker.current_position, x_scaling = x_scaling, nutrient_level = nutrient_level))
 
         #protect run-away loop and print progress
         loop_count += 1
@@ -307,10 +308,10 @@ def save_data(all_walkers, now, plot=None):
 
     if plot != None:
         #save plot
-        plot.savefig(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\plot.png')
+        plot.savefig(f'exploration_raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\plot.png')
 
     #generate and save walker data
-    with open(f'raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\raw_data.csv', 'a') as walker_file:
+    with open(f'exploration_raw_data\\{now.strftime("%m_%d_%Y")}_{now.strftime("%H-%M-%S")}\\raw_data.csv', 'a') as walker_file:
         walker_file.write('walker_id,position_id,x,y\n')
         walker_id = 0
         for walker in all_walkers:
@@ -371,3 +372,4 @@ if __name__ == '__main__':
     all_walkers, now = exploration_algorithm(num_walkers, x_scaling, nutrient_level, max_loops)
     plot = plot_data(all_walkers, nutrient_level)
     save_data(all_walkers, now, plot)
+    plot.show()
