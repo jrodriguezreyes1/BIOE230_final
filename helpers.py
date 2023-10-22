@@ -49,7 +49,7 @@ def load_exploration(raw_data_csv):
 
 			last_walker_id = walker_id
 
-	return all_walkers
+	return all_walkers, nutrient_level, date_time
 
 
 def print_matrix(matrix):

@@ -28,7 +28,7 @@ class Walker():
                                                                     #force vetor expoenet changes linearly as the walker approaches the nutrient
         #behavioral constants
         self.rotational_diffusion = 0.05                            #how much the momentum can change per step
-        self.branch_probability = 0.0015                            #probability that a walker with branch
+        self.branch_probability = 0.0015                            #probability that a walker will branch
         self.convergence_divergence_distance = 50                   #radius the walker will look to determine the convergence/divergence force
 
         #initialize variables (Don't Touch!)
@@ -204,8 +204,11 @@ class Walker():
         '''
         if self.current_position[1] > self.nutrient_level:
             self.finished = True
+        if self.current_position[1] < -300:
+            self.terminated = True
         if self.step > self.max_steps:
             self.terminated = True
+
 
     def branch(self):
         '''
